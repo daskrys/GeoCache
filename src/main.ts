@@ -9,7 +9,7 @@ const MERRILL_CLASSROOM = leaflet.latLng({
   lng: -122.0533,
 });
 
-const GAMEPLAY_ZOOM_LEVEL = 19;
+const GAMEPLAY_ZOOM_LEVEL = 18.5;
 const TILE_DEGREES = 1e-4;
 const NEIGHBORHOOD_SIZE = 8;
 const PIT_SPAWN_PROBABILITY = 0.1;
