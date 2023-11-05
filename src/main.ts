@@ -78,7 +78,7 @@ function makePit(i: number, j: number) {
   ]);
 
   const pit = leaflet.rectangle(bounds) as leaflet.Layer;
-  let pit1 = pit.bindPopup(() => {
+  pit.bindPopup(() => {
     let value = Math.floor(luck([i, j, "initialValue"].toString()) * 100);
     const container = document.createElement("div");
     container.innerHTML = `
@@ -88,8 +88,6 @@ function makePit(i: number, j: number) {
                 <p id="playerLocation">playerLocation</p>`;
     const poke = container.querySelector<HTMLButtonElement>("#poke")!;
     const deposit = container.querySelector<HTMLButtonElement>("#deposit")!;
-    const playerLocation =
-      container.querySelector<HTMLParagraphElement>("#playerLocation")!;
 
     poke.addEventListener("click", () => {
       if (value > 0) {
