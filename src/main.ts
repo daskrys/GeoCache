@@ -7,18 +7,6 @@ import { Cell } from "./board";
 
 const CELL_MULTIPLIER: number = 1e4;
 
-class GameCell {
-  i: number;
-  j: number;
-
-  constructor(lat: number, lng: number) {
-    this.i = lat * CELL_MULTIPLIER;
-    this.j = lng * CELL_MULTIPLIER;
-  }
-}
-
-//const MERRIL_GAME_CELL: GameCell = new GameCell(36.9995, -122.0533);
-//console.log(MERRIL_GAME_CELL.i, MERRIL_GAME_CELL.j);
 const MERRILL_CELL: Cell = {
   i: 36.9995 * CELL_MULTIPLIER,
   j: -122.0533 * CELL_MULTIPLIER,
@@ -29,11 +17,6 @@ console.log(MERRILL_CELL.i, MERRILL_CELL.j);
 const MERRILL_CLASSROOM: leaflet.LatLng = leaflet.latLng({
   lat: 36.9995,
   lng: -122.0533,
-});
-
-const NULL_ISLAND: leaflet.LatLng = leaflet.latLng({
-  lat: 0,
-  lng: 0,
 });
 
 let playerLatLang: leaflet.LatLng = leaflet.latLng({
@@ -49,7 +32,6 @@ const PIT_SPAWN_PROBABILITY: number = 0.1;
 const mapContainer: HTMLElement = document.querySelector<HTMLElement>("#map")!;
 
 const map = leaflet.map(mapContainer, {
-  //center: MERRILL_CLASSROOM,
   center: MERRILL_CLASSROOM,
   zoom: GAMEPLAY_ZOOM_LEVEL,
   minZoom: GAMEPLAY_ZOOM_LEVEL,
