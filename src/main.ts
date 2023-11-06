@@ -3,36 +3,25 @@ import "./style.css";
 import leaflet from "leaflet";
 import luck from "./luck";
 import "./leafletWorkaround";
-import { Cell } from "./board";
+import { Cell, Board } from "./board";
+//import { Coin, CoinBase } from "./board";
+//commented out for commit
 
-const CELL_MULTIPLIER: number = 1e4;
-
-const MERRILL_CELL: Cell = {
-  i: 36.9995 * CELL_MULTIPLIER,
-  j: -122.0533 * CELL_MULTIPLIER,
-};
-
-console.log(MERRILL_CELL.i, MERRILL_CELL.j);
-
-const MERRILL_CLASSROOM: leaflet.LatLng = leaflet.latLng({
-  lat: 36.9995,
-  lng: -122.0533,
-});
+//const NULL_ISLAND: leaflet.LatLng = leaflet.latLng(0, 0);
+const GAMEPLAY_ZOOM_LEVEL: number = 18.5;
+const TILE_DEGREES: number = 1e-4;
+const NEIGHBORHOOD_SIZE: number = 8;
+const PIT_SPAWN_PROBABILITY: number = 0.1;
+const board = new Board(TILE_DEGREES, NEIGHBORHOOD_SIZE);
+const mapContainer: HTMLElement = document.querySelector<HTMLElement>("#map")!;
 
 let playerLatLang: leaflet.LatLng = leaflet.latLng({
   lat: 36.9995,
   lng: -122.0533,
 });
 
-const GAMEPLAY_ZOOM_LEVEL: number = 18.5;
-const TILE_DEGREES: number = 1e-4;
-const NEIGHBORHOOD_SIZE: number = 8;
-const PIT_SPAWN_PROBABILITY: number = 0.1;
-
-const mapContainer: HTMLElement = document.querySelector<HTMLElement>("#map")!;
-
 const map = leaflet.map(mapContainer, {
-  center: MERRILL_CLASSROOM,
+  center: playerLatLang,
   zoom: GAMEPLAY_ZOOM_LEVEL,
   minZoom: GAMEPLAY_ZOOM_LEVEL,
   maxZoom: GAMEPLAY_ZOOM_LEVEL,
@@ -48,7 +37,7 @@ leaflet
   })
   .addTo(map);
 
-const playerMarker: leaflet.Marker<any> = leaflet.marker(MERRILL_CLASSROOM);
+const playerMarker: leaflet.Marker<any> = leaflet.marker(playerLatLang);
 playerMarker.bindTooltip("That's you!");
 playerMarker.addTo(map);
 
@@ -63,8 +52,7 @@ sensorButton.addEventListener("click", () => {
     map.setView(playerMarker.getLatLng());
     playerLatLang = playerMarker.getLatLng();
 
-    createPits();
-    //updatePosition(); // commented out for now
+    createPits(playerLatLang);
   });
 });
 
@@ -78,19 +66,10 @@ const inventory: HTMLDivElement =
 inventory.innerHTML = "Inventory: ";
 
 function makePit(i: number, j: number) {
-  const bounds = leaflet.latLngBounds([
-    [
-      playerLatLang.lat + i * TILE_DEGREES,
-      playerLatLang.lng + j * TILE_DEGREES,
-    ],
-    [
-      playerLatLang.lat + (i + 1) * TILE_DEGREES,
-      playerLatLang.lng + (j + 1) * TILE_DEGREES,
-    ],
-  ]);
-
-  const pit = leaflet.rectangle(bounds) as leaflet.Layer;
-  //const gridCell = new GameCell(i, j);
+  const newCell: Cell = { i, j };
+  const newBounds = board.getCellBounds(newCell);
+  //const newCoins = new CoinBase(playerLatLang);
+  const pit = leaflet.rectangle(newBounds) as leaflet.Layer;
 
   pit.bindPopup(() => {
     let value = Math.floor(luck([i, j, "initialValue"].toString()) * 100);
@@ -111,6 +90,7 @@ function makePit(i: number, j: number) {
 
       container.querySelector<HTMLSpanElement>("#value")!.innerHTML =
         value.toString();
+
       statusPanel.innerHTML = `${points} points accumulated`;
     });
 
@@ -122,6 +102,7 @@ function makePit(i: number, j: number) {
 
       container.querySelector<HTMLSpanElement>("#value")!.innerHTML =
         value.toString();
+
       statusPanel.innerHTML = `${points} points accumulated`;
     });
 
@@ -135,26 +116,16 @@ function makePit(i: number, j: number) {
   pit.addTo(map);
 }
 
-function createPits() {
+function createPits(location: leaflet.LatLng) {
+  const playerCell: Cell = board.getCellForPoint(location);
+
   for (let i = -NEIGHBORHOOD_SIZE; i < NEIGHBORHOOD_SIZE; i++) {
     for (let j = -NEIGHBORHOOD_SIZE; j < NEIGHBORHOOD_SIZE; j++) {
       if (luck([i, j].toString()) < PIT_SPAWN_PROBABILITY) {
-        makePit(i, j);
+        makePit(playerCell.i + i, playerCell.j + j);
       }
     }
   }
 }
-// recursive function that updates position without generating new pits every time
-// put this into an infinite loop later
-/*
-function updatePosition() {
-  setTimeout(() => {
-    playerMarker.setLatLng(playerLatLang);
-    map.setView(playerMarker.getLatLng());
-    console.log("Position Updated");
-    console.log(playerLatLang);
-    updatePosition();
-  }, 5000);
-}
-*/
-createPits();
+
+createPits(playerLatLang);
