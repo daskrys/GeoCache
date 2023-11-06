@@ -69,6 +69,11 @@ h1 {
   margin: 0 auto;
 }
 
+#inventory {
+  padding: 1rem;
+  margin: 0 auto;
+}
+
 button {
   border-radius: 8px;
   border: 1px solid transparent;
