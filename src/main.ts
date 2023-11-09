@@ -7,18 +7,17 @@ import { Cell, Board } from "./board";
 //import { Coin, CoinBase } from "./board";
 //commented out for commit
 
+let playerLatLang: leaflet.LatLng = leaflet.latLng({
+  lat: 36.9995,
+  lng: -122.0533,
+});
 //const NULL_ISLAND: leaflet.LatLng = leaflet.latLng(0, 0);
 const GAMEPLAY_ZOOM_LEVEL: number = 18.5;
 const TILE_DEGREES: number = 1e-4;
 const NEIGHBORHOOD_SIZE: number = 8;
 const PIT_SPAWN_PROBABILITY: number = 0.1;
-const board = new Board(TILE_DEGREES, NEIGHBORHOOD_SIZE);
+const board = new Board(TILE_DEGREES, NEIGHBORHOOD_SIZE, playerLatLang);
 const mapContainer: HTMLElement = document.querySelector<HTMLElement>("#map")!;
-
-let playerLatLang: leaflet.LatLng = leaflet.latLng({
-  lat: 36.9995,
-  lng: -122.0533,
-});
 
 const map = leaflet.map(mapContainer, {
   center: playerLatLang,
