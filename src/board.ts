@@ -1,5 +1,5 @@
 import leaflet from "leaflet";
-import luck from "./luck";
+//import luck from "./luck";
 
 export interface Cell {
   readonly i: number;
