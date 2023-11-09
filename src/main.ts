@@ -4,7 +4,7 @@ import leaflet from "leaflet";
 import luck from "./luck";
 import "./leafletWorkaround";
 import { Cell, Board } from "./board";
-//import { Coin, CoinBase } from "./board";
+import { Coin } from "./board";
 //commented out for commit
 
 let playerLatLang: leaflet.LatLng = leaflet.latLng({
@@ -16,7 +16,7 @@ const GAMEPLAY_ZOOM_LEVEL: number = 18.5;
 const TILE_DEGREES: number = 1e-4;
 const NEIGHBORHOOD_SIZE: number = 8;
 const PIT_SPAWN_PROBABILITY: number = 0.1;
-const board = new Board(TILE_DEGREES, NEIGHBORHOOD_SIZE, playerLatLang);
+const board = new Board(TILE_DEGREES, NEIGHBORHOOD_SIZE);
 const mapContainer: HTMLElement = document.querySelector<HTMLElement>("#map")!;
 
 const map = leaflet.map(mapContainer, {
@@ -36,10 +36,12 @@ leaflet
   })
   .addTo(map);
 
+let myInventory: Coin[] = [];
 const playerMarker: leaflet.Marker<any> = leaflet.marker(playerLatLang);
 playerMarker.bindTooltip("That's you!");
 playerMarker.addTo(map);
 
+// buttons for live player location
 const sensorButton: Element = document.querySelector("#sensor")!;
 
 sensorButton.addEventListener("click", () => {
@@ -66,12 +68,20 @@ inventory.innerHTML = "Inventory: ";
 
 function makePit(i: number, j: number) {
   const newCell: Cell = { i, j };
+  const Coins: Coin[] = [];
   const newBounds = board.getCellBounds(newCell);
-  //const newCoins = new CoinBase(playerLatLang);
+  let value = Math.floor(luck([i, j, "initialValue"].toString()) * 3);
+
+  for (let k = 0; k < value; k++) {
+    const serial = "#" + k.toString();
+    const newCoin: Coin = { i, j, serial };
+    console.log(newCoin.i);
+    Coins.push(newCoin);
+  }
+
   const pit = leaflet.rectangle(newBounds) as leaflet.Layer;
 
   pit.bindPopup(() => {
-    let value = Math.floor(luck([i, j, "initialValue"].toString()) * 100);
     const container = document.createElement("div");
     container.innerHTML = `
                 <div>There is a pit here at "${i},${j}". It has value <span id="value">${value}</span>.</div>
@@ -84,12 +94,13 @@ function makePit(i: number, j: number) {
     poke.addEventListener("click", () => {
       if (value > 0) {
         value--;
+        myInventory.push(Coins.pop()!);
         points++;
       }
 
       container.querySelector<HTMLSpanElement>("#value")!.innerHTML =
         value.toString();
-
+      showInventory();
       statusPanel.innerHTML = `${points} points accumulated`;
     });
 
@@ -124,6 +135,19 @@ function createPits(location: leaflet.LatLng) {
         makePit(playerCell.i + i, playerCell.j + j);
       }
     }
+  }
+}
+
+function showInventory() {
+  inventory.innerHTML = "Inventory: " + "<br/>";
+  console.log(myInventory.length);
+  for (let k = 0; k < myInventory.length; k++) {
+    inventory.innerHTML +=
+      myInventory[k].i.toString() +
+      ": " +
+      myInventory[k].j.toString() +
+      myInventory[k].serial.toString() +
+      "<br/>";
   }
 }
 
