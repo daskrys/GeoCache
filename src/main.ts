@@ -57,7 +57,7 @@ sensorButton.addEventListener("click", () => {
   });
 });
 
-let points: number = 0;
+let coinCollected: number = 0;
 const statusPanel: HTMLDivElement =
   document.querySelector<HTMLDivElement>("#statusPanel")!;
 statusPanel.innerHTML = "Nothing to see here... yet";
@@ -68,15 +68,15 @@ inventory.innerHTML = "Inventory: ";
 
 function makePit(i: number, j: number) {
   const newCell: Cell = { i, j };
-  const Coins: Coin[] = [];
+  const PitCoins: Coin[] = [];
   const newBounds = board.getCellBounds(newCell);
-  let value = Math.floor(luck([i, j, "initialValue"].toString()) * 3);
+  let value = Math.floor(luck([i, j, "initialValue"].toString()) * 6);
 
   for (let k = 0; k < value; k++) {
-    const serial = "#" + k.toString();
+    const serial = "#" + (k + 1).toString();
     const newCoin: Coin = { i, j, serial };
     console.log(newCoin.i);
-    Coins.push(newCoin);
+    PitCoins.push(newCoin);
   }
 
   const pit = leaflet.rectangle(newBounds) as leaflet.Layer;
@@ -94,26 +94,28 @@ function makePit(i: number, j: number) {
     poke.addEventListener("click", () => {
       if (value > 0) {
         value--;
-        myInventory.push(Coins.pop()!);
-        points++;
+        myInventory.push(PitCoins.pop()!);
+        coinCollected++;
       }
 
       container.querySelector<HTMLSpanElement>("#value")!.innerHTML =
         value.toString();
       showInventory();
-      statusPanel.innerHTML = `${points} points accumulated`;
+      statusPanel.innerHTML = `${coinCollected} coins accumulated`;
     });
 
     deposit.addEventListener("click", () => {
-      if (points > 0) {
-        points--;
+      if (coinCollected > 0) {
+        const depositCoin: Coin = myInventory.pop()!;
+        PitCoins.push(depositCoin);
+        coinCollected--;
         value++;
       }
 
       container.querySelector<HTMLSpanElement>("#value")!.innerHTML =
         value.toString();
-
-      statusPanel.innerHTML = `${points} points accumulated`;
+      showInventory();
+      statusPanel.innerHTML = `${coinCollected} points accumulated`;
     });
 
     container.querySelector<HTMLSpanElement>(
