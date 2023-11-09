@@ -6,7 +6,7 @@ export interface Cell {
   readonly j: number;
 }
 
-export interface Coin {
+export interface GeoCoin {
   readonly i: number;
   readonly j: number;
   readonly serial: string;

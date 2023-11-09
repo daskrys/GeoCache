@@ -4,7 +4,7 @@ import leaflet from "leaflet";
 import luck from "./luck";
 import "./leafletWorkaround";
 import { Cell, Board } from "./board";
-import { Coin } from "./board";
+import { GeoCoin } from "./board";
 //commented out for commit
 
 let playerLatLang: leaflet.LatLng = leaflet.latLng({
@@ -36,7 +36,7 @@ leaflet
   })
   .addTo(map);
 
-let myInventory: Coin[] = [];
+let myInventory: GeoCoin[] = [];
 const playerMarker: leaflet.Marker<any> = leaflet.marker(playerLatLang);
 playerMarker.bindTooltip("That's you!");
 playerMarker.addTo(map);
@@ -53,7 +53,7 @@ sensorButton.addEventListener("click", () => {
     map.setView(playerMarker.getLatLng());
     playerLatLang = playerMarker.getLatLng();
 
-    createPits(playerLatLang);
+    createCache(playerLatLang);
   });
 });
 
@@ -66,17 +66,17 @@ const inventory: HTMLDivElement =
   document.querySelector<HTMLDivElement>("#inventory")!;
 inventory.innerHTML = "Inventory: ";
 
-function makePit(i: number, j: number) {
+function makeGeocacheLocation(i: number, j: number) {
   const newCell: Cell = { i, j };
-  const PitCoins: Coin[] = [];
+  const geocacheCoins: GeoCoin[] = [];
   const newBounds = board.getCellBounds(newCell);
   let value = Math.floor(luck([i, j, "initialValue"].toString()) * 6);
 
   for (let k = 0; k < value; k++) {
     const serial = "#" + (k + 1).toString();
-    const newCoin: Coin = { i, j, serial };
+    const newCoin: GeoCoin = { i, j, serial };
     console.log(newCoin.i);
-    PitCoins.push(newCoin);
+    geocacheCoins.push(newCoin);
   }
 
   const pit = leaflet.rectangle(newBounds) as leaflet.Layer;
@@ -94,7 +94,7 @@ function makePit(i: number, j: number) {
     poke.addEventListener("click", () => {
       if (value > 0) {
         value--;
-        myInventory.push(PitCoins.pop()!);
+        myInventory.push(geocacheCoins.pop()!);
         coinCollected++;
       }
 
@@ -106,8 +106,8 @@ function makePit(i: number, j: number) {
 
     deposit.addEventListener("click", () => {
       if (coinCollected > 0) {
-        const depositCoin: Coin = myInventory.pop()!;
-        PitCoins.push(depositCoin);
+        const depositCoin: GeoCoin = myInventory.pop()!;
+        geocacheCoins.push(depositCoin);
         coinCollected--;
         value++;
       }
@@ -128,13 +128,13 @@ function makePit(i: number, j: number) {
   pit.addTo(map);
 }
 
-function createPits(location: leaflet.LatLng) {
+function createCache(location: leaflet.LatLng) {
   const playerCell: Cell = board.getCellForPoint(location);
 
   for (let i = -NEIGHBORHOOD_SIZE; i < NEIGHBORHOOD_SIZE; i++) {
     for (let j = -NEIGHBORHOOD_SIZE; j < NEIGHBORHOOD_SIZE; j++) {
       if (luck([i, j].toString()) < PIT_SPAWN_PROBABILITY) {
-        makePit(playerCell.i + i, playerCell.j + j);
+        makeGeocacheLocation(playerCell.i + i, playerCell.j + j);
       }
     }
   }
@@ -145,6 +145,7 @@ function showInventory() {
   console.log(myInventory.length);
   for (let k = 0; k < myInventory.length; k++) {
     inventory.innerHTML +=
+      "🦃 " +
       myInventory[k].i.toString() +
       ": " +
       myInventory[k].j.toString() +
@@ -153,4 +154,4 @@ function showInventory() {
   }
 }
 
-createPits(playerLatLang);
+createCache(playerLatLang);
