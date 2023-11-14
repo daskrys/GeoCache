@@ -5,7 +5,7 @@ import luck from "./luck";
 import "./leafletWorkaround";
 import { Cell, Board } from "./board";
 import { GeoCoin } from "./board";
-import { Geocache, GeocacheMomento } from "./board";
+import { Geocache } from "./board";
 //commented out for commit
 
 let playerLatLang: leaflet.LatLng = leaflet.latLng({
@@ -21,9 +21,10 @@ const MOVE_DISTANCE: number = 1e-4;
 
 const board = new Board(TILE_DEGREES, NEIGHBORHOOD_SIZE);
 const mapContainer: HTMLElement = document.querySelector<HTMLElement>("#map")!;
+let pitLayers: leaflet.Layer[] = [];
 
-let cacheLocations: leaflet.LatLng = playerLatLang;
-console.log(cacheLocations.lat + " " + cacheLocations.lng);
+let mapCenter: leaflet.LatLng = playerLatLang;
+//console.log(cacheLocations.lat + " " + cacheLocations.lng);
 const map = leaflet.map(mapContainer, {
   center: playerLatLang,
   zoom: GAMEPLAY_ZOOM_LEVEL,
@@ -40,6 +41,8 @@ leaflet
       '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   })
   .addTo(map);
+
+const mementos: Map<Cell, string> = new Map<Cell, string>();
 
 let myInventory: GeoCoin[] = [];
 const playerMarker: leaflet.Marker<any> = leaflet.marker(playerLatLang);
@@ -67,9 +70,6 @@ sensorButton.addEventListener("click", () => {
 
     updatePlayerLocation(newLatLang);
     navigator.geolocation.clearWatch(watchId);
-
-    //map.setView(playerMarker.getLatLng());
-    //playerLatLang = playerMarker.getLatLng();
   });
 });
 
@@ -84,18 +84,33 @@ inventory.innerHTML = "Inventory: ";
 
 function makeGeocacheLocation(i: number, j: number) {
   const newCell: Cell = { i, j };
-  const geocacheCoins: GeoCoin[] = [];
   const newBounds = board.getCellBounds(newCell);
+  console.log(newCell);
   let value = Math.floor(luck([i, j, "initialValue"].toString()) * 6);
+  const geocacheCoins: GeoCoin[] = [];
 
-  for (let k = 0; k < value; k++) {
-    const serial = "#" + (k + 1).toString();
-    const newCoin: GeoCoin = { i, j, serial };
+  if (mementos.has(newCell) == false) {
+    //const newBounds = board.getCellBounds(newCell);
 
-    geocacheCoins.push(newCoin);
+    for (let k = 0; k < value; k++) {
+      const serial = "#" + (k + 1).toString();
+      const newCoin: GeoCoin = { i, j, serial };
+
+      geocacheCoins.push(newCoin);
+    }
+
+    const newGeocache = new Geocache();
+    newGeocache.i = i;
+    newGeocache.j = j;
+    newGeocache.numCoins = value;
+    newGeocache.GeoCoins = geocacheCoins;
+    mementos.set(newCell, newGeocache.toMemento());
   }
 
+  // from here up its for making the geocache
+
   const pit = leaflet.rectangle(newBounds) as leaflet.Layer;
+  pitLayers.push(pit);
 
   pit.bindPopup(() => {
     const container = document.createElement("div");
@@ -112,6 +127,15 @@ function makeGeocacheLocation(i: number, j: number) {
         value--;
         myInventory.push(geocacheCoins.pop()!);
         coinCollected++;
+
+        const updateCache = new Geocache();
+        updateCache.i = i;
+        updateCache.j = j;
+        updateCache.numCoins = value;
+        updateCache.GeoCoins = geocacheCoins;
+
+        mementos.delete(newCell);
+        mementos.set(newCell, updateCache.toMemento());
       }
 
       container.querySelector<HTMLSpanElement>("#value")!.innerHTML =
@@ -126,6 +150,15 @@ function makeGeocacheLocation(i: number, j: number) {
         geocacheCoins.push(depositCoin);
         coinCollected--;
         value++;
+        // refactor if it works
+        const updateCache = new Geocache();
+        updateCache.i = i;
+        updateCache.j = j;
+        updateCache.numCoins = value;
+        updateCache.GeoCoins = geocacheCoins;
+
+        mementos.delete(newCell);
+        mementos.set(newCell, updateCache.toMemento());
       }
 
       container.querySelector<HTMLSpanElement>("#value")!.innerHTML =
@@ -193,8 +226,25 @@ function createCache(location: leaflet.LatLng) {
   }
 }
 
+function createCacheFromMemento() {
+  for (let [key, value] of mementos) {
+    let newCache = new Geocache();
+    newCache.fromMemento(value);
+    console.log(newCache);
+  }
+}
+
+function clearPits() {
+  for (let i = 0; i < pitLayers.length; i++) {
+    map.removeLayer(pitLayers[i]);
+  }
+  pitLayers = [];
+}
+
 function updatePlayerLocation(newLatLang: leaflet.LatLng) {
-  if (generateNewCacheLocation(newLatLang)) {
+  if (checkCacheLocation(newLatLang)) {
+    clearPits();
+    //createCacheFromMemento();
     createCache(playerLatLang);
   }
   playerMarker.setLatLng(newLatLang);
@@ -202,17 +252,17 @@ function updatePlayerLocation(newLatLang: leaflet.LatLng) {
   map.setView(playerMarker.getLatLng());
 }
 
-function generateNewCacheLocation(newLatLang: leaflet.LatLng): boolean {
+function checkCacheLocation(newLatLang: leaflet.LatLng): boolean {
   const exponent: number = 2;
   const distance: number = 0.001;
 
   let delta = Math.sqrt(
-    (newLatLang.lat - cacheLocations.lat) ** exponent +
-      (newLatLang.lng - cacheLocations.lng) ** exponent
+    (newLatLang.lat - mapCenter.lat) ** exponent +
+      (newLatLang.lng - mapCenter.lng) ** exponent
   );
 
   if (delta > distance) {
-    cacheLocations = newLatLang;
+    mapCenter = newLatLang;
     return true;
   } else {
     return false;
@@ -233,15 +283,13 @@ function showInventory() {
   }
 }
 
-createCache(playerLatLang);
-
 /*
-  USAGE: 
-  
-  const geocacheA = new Geocache();
-  geocacheA.numCoins = 100;
-  const momento = geocacheA.toMomento();
-  const geocacheB = new Geocache();
-  geocacheB.fromMomento(momento);
-  console.assert(geocacheA.numCoins == geocacheB.numCoins);
+const geocacheA = new Geocache();
+geocacheA.numCoins = 100;
+const momento = geocacheA.toMemento();
+const geocacheB = new Geocache();
+geocacheB.fromMemento(momento);
+console.assert(geocacheA.numCoins == geocacheB.numCoins);
 */
+
+createCache(playerLatLang);
