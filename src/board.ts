@@ -12,28 +12,45 @@ export interface GeoCoin {
   readonly serial: string;
 }
 
-export interface Momento<T> {
-  toMomento(): T;
-  fromMomento(momento: T): void;
+export interface Memento<T> {
+  toMemento(): T;
+  fromMemento(memento: T): void;
 }
 
-export class Geocache implements Momento<string> {
+export class Geocache implements Memento<string> {
   i: number;
   j: number;
   numCoins: number;
-
+  GeoCoins: GeoCoin[];
+  /*
+  constructor(
+    newI: number,
+    newJ: number,
+    newNumCoins: number,
+    newGeoCoins: GeoCoin[]
+  ) {
+    this.i = newI;
+    this.j = newJ;
+    this.numCoins = newNumCoins;
+    this.GeoCoins = newGeoCoins;
+  }
+  */
   constructor() {
     this.i = 0;
     this.j = 0;
-    this.numCoins = 2;
+    this.numCoins = 0;
+    this.GeoCoins = [];
   }
 
-  toMomento(): string {
+  toMemento(): string {
     return JSON.stringify(this);
   }
 
-  fromMomento(momento: string): void {
-    this.numCoins = parseInt(momento);
+  fromMemento(memento: string): void {
+    this.i = JSON.parse(memento).i;
+    this.j = JSON.parse(memento).j;
+    this.numCoins = JSON.parse(memento).numCoins;
+    this.GeoCoins = JSON.parse(memento).GeoCoins;
   }
 }
 
