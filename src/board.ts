@@ -12,6 +12,31 @@ export interface GeoCoin {
   readonly serial: string;
 }
 
+export interface Momento<T> {
+  toMomento(): T;
+  fromMomento(momento: T): void;
+}
+
+export class Geocache implements Momento<string> {
+  i: number;
+  j: number;
+  numCoins: number;
+
+  constructor() {
+    this.i = 0;
+    this.j = 0;
+    this.numCoins = 2;
+  }
+
+  toMomento(): string {
+    return JSON.stringify(this);
+  }
+
+  fromMomento(momento: string): void {
+    this.numCoins = parseInt(momento);
+  }
+}
+
 export class Board {
   readonly tileWidth: number;
   readonly tileVisibility: number;
@@ -38,7 +63,10 @@ export class Board {
     const newCell: Cell = { i, j };
     // delete bottom two only for commit
     const canonicalCell = this.getCanonicalCell(newCell);
-    console.log(canonicalCell);
+
+    if (canonicalCell) {
+      return canonicalCell;
+    }
 
     return newCell;
   }

@@ -5,6 +5,7 @@ import luck from "./luck";
 import "./leafletWorkaround";
 import { Cell, Board } from "./board";
 import { GeoCoin } from "./board";
+import { Geocache, GeocacheMomento } from "./board";
 //commented out for commit
 
 let playerLatLang: leaflet.LatLng = leaflet.latLng({
@@ -16,9 +17,13 @@ const GAMEPLAY_ZOOM_LEVEL: number = 18.5;
 const TILE_DEGREES: number = 1e-4;
 const NEIGHBORHOOD_SIZE: number = 8;
 const PIT_SPAWN_PROBABILITY: number = 0.1;
+const MOVE_DISTANCE: number = 1e-4;
+
 const board = new Board(TILE_DEGREES, NEIGHBORHOOD_SIZE);
 const mapContainer: HTMLElement = document.querySelector<HTMLElement>("#map")!;
 
+let cacheLocations: leaflet.LatLng = playerLatLang;
+console.log(cacheLocations.lat + " " + cacheLocations.lng);
 const map = leaflet.map(mapContainer, {
   center: playerLatLang,
   zoom: GAMEPLAY_ZOOM_LEVEL,
@@ -43,17 +48,28 @@ playerMarker.addTo(map);
 
 // buttons for live player location
 const sensorButton: Element = document.querySelector("#sensor")!;
+const westButton: HTMLButtonElement =
+  document.querySelector<HTMLButtonElement>("#west")!;
+const eastButton: HTMLButtonElement =
+  document.querySelector<HTMLButtonElement>("#east")!;
+const northButton: HTMLButtonElement =
+  document.querySelector<HTMLButtonElement>("#north")!;
+const southButton: HTMLButtonElement =
+  document.querySelector<HTMLButtonElement>("#south")!;
 
 sensorButton.addEventListener("click", () => {
   let watchId: number = navigator.geolocation.watchPosition((position) => {
-    playerMarker.setLatLng(
-      leaflet.latLng(position.coords.latitude, position.coords.longitude)
+    const newLatLang = leaflet.latLng(
+      position.coords.latitude,
+      position.coords.longitude
     );
-    navigator.geolocation.clearWatch(watchId);
-    map.setView(playerMarker.getLatLng());
-    playerLatLang = playerMarker.getLatLng();
+    // ensures pits aren't remade if location is the same for now
 
-    createCache(playerLatLang);
+    updatePlayerLocation(newLatLang);
+    navigator.geolocation.clearWatch(watchId);
+
+    //map.setView(playerMarker.getLatLng());
+    //playerLatLang = playerMarker.getLatLng();
   });
 });
 
@@ -75,7 +91,7 @@ function makeGeocacheLocation(i: number, j: number) {
   for (let k = 0; k < value; k++) {
     const serial = "#" + (k + 1).toString();
     const newCoin: GeoCoin = { i, j, serial };
-    console.log(newCoin.i);
+
     geocacheCoins.push(newCoin);
   }
 
@@ -128,6 +144,43 @@ function makeGeocacheLocation(i: number, j: number) {
   pit.addTo(map);
 }
 
+// buttons for moving player location
+westButton.addEventListener("click", () => {
+  const newLatLang = leaflet.latLng(
+    playerLatLang.lat,
+    playerLatLang.lng - MOVE_DISTANCE
+  );
+
+  updatePlayerLocation(newLatLang);
+});
+
+eastButton.addEventListener("click", () => {
+  const newLatLang = leaflet.latLng(
+    playerLatLang.lat,
+    playerLatLang.lng + MOVE_DISTANCE
+  );
+
+  updatePlayerLocation(newLatLang);
+});
+
+northButton.addEventListener("click", () => {
+  const newLatLang = leaflet.latLng(
+    playerLatLang.lat + MOVE_DISTANCE,
+    playerLatLang.lng
+  );
+
+  updatePlayerLocation(newLatLang);
+});
+
+southButton.addEventListener("click", () => {
+  const newLatLang = leaflet.latLng(
+    playerLatLang.lat - MOVE_DISTANCE,
+    playerLatLang.lng
+  );
+
+  updatePlayerLocation(newLatLang);
+});
+
 function createCache(location: leaflet.LatLng) {
   const playerCell: Cell = board.getCellForPoint(location);
 
@@ -137,6 +190,32 @@ function createCache(location: leaflet.LatLng) {
         makeGeocacheLocation(playerCell.i + i, playerCell.j + j);
       }
     }
+  }
+}
+
+function updatePlayerLocation(newLatLang: leaflet.LatLng) {
+  if (generateNewCacheLocation(newLatLang)) {
+    createCache(playerLatLang);
+  }
+  playerMarker.setLatLng(newLatLang);
+  playerLatLang = playerMarker.getLatLng();
+  map.setView(playerMarker.getLatLng());
+}
+
+function generateNewCacheLocation(newLatLang: leaflet.LatLng): boolean {
+  const exponent: number = 2;
+  const distance: number = 0.001;
+
+  let delta = Math.sqrt(
+    (newLatLang.lat - cacheLocations.lat) ** exponent +
+      (newLatLang.lng - cacheLocations.lng) ** exponent
+  );
+
+  if (delta > distance) {
+    cacheLocations = newLatLang;
+    return true;
+  } else {
+    return false;
   }
 }
 
@@ -155,3 +234,14 @@ function showInventory() {
 }
 
 createCache(playerLatLang);
+
+/*
+  USAGE: 
+  
+  const geocacheA = new Geocache();
+  geocacheA.numCoins = 100;
+  const momento = geocacheA.toMomento();
+  const geocacheB = new Geocache();
+  geocacheB.fromMomento(momento);
+  console.assert(geocacheA.numCoins == geocacheB.numCoins);
+*/
