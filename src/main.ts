@@ -225,7 +225,7 @@ function createCache(location: leaflet.LatLng) {
     }
   }
 }
-
+/*
 function createCacheFromMemento() {
   for (let [key, value] of mementos) {
     let newCache = new Geocache();
@@ -233,7 +233,7 @@ function createCacheFromMemento() {
     console.log(newCache);
   }
 }
-
+*/
 function clearPits() {
   for (let i = 0; i < pitLayers.length; i++) {
     map.removeLayer(pitLayers[i]);
