@@ -1,15 +1,14 @@
 import leaflet from "leaflet";
-//import luck from "./luck";
+import luck from "./luck";
 
 export interface Cell {
-  readonly i: number;
-  readonly j: number;
+  i: number;
+  j: number;
 }
 
 export interface GeoCoin {
-  readonly i: number;
-  readonly j: number;
-  readonly serial: string;
+  mintLocation: Cell;
+  serial: string;
 }
 
 export interface Memento<T> {
@@ -18,24 +17,63 @@ export interface Memento<T> {
 }
 
 export class Geocache implements Memento<string> {
-  i: number;
-  j: number;
-  numCoins: number;
+  coins: GeoCoin[];
+  description: string;
 
-  constructor() {
-    this.i = 0;
-    this.j = 0;
-    this.numCoins = 0;
+  constructor(newCell: Cell) {
+    const numOfCoins = Math.floor(
+      luck([newCell.i, newCell.j, "initialValue"].toString()) * 5
+    );
+    this.description = `There is a pit here at "${newCell.i},${newCell.j}". It has value <span id="value">${numOfCoins}</span>.`;
+    this.coins = [];
+
+    for (let j = 0; j < numOfCoins; j++) {
+      const serial: string = "#" + j.toString() + " : " + newCell.i + newCell.j;
+      const newCoin: GeoCoin = { mintLocation: newCell, serial: serial };
+      this.coins.push(newCoin);
+    }
   }
-
+  /*
   toMemento(): string {
     return JSON.stringify(this);
   }
 
   fromMemento(memento: string): void {
-    this.i = JSON.parse(memento).i;
-    this.j = JSON.parse(memento).j;
-    this.numCoins = JSON.parse(memento).numCoins;
+    const { coins, description } = JSON.parse(memento);
+    this.coins = coins;
+    this.description = description;
+  }
+  */
+  deposit(newCoin: GeoCoin) {
+    this.coins.push(newCoin);
+  }
+
+  poke(): GeoCoin | undefined {
+    if (this.coins.length > 0) {
+      return this.coins.pop();
+    }
+  }
+
+  getCoinCount(): number {
+    return this.coins.length;
+  }
+
+  toMemento(): string {
+    return this.coins
+      .map((coin) =>
+        [coin.mintLocation.i, coin.mintLocation.j, coin.serial].toString()
+      )
+      .join(";");
+  }
+
+  fromMemento(memento: string): void {
+    this.coins = memento.split(";").map((coin) => {
+      const [i, j, serial] = coin.split(",");
+      return {
+        mintLocation: { i: parseInt(i), j: parseInt(j) },
+        serial: serial,
+      };
+    });
   }
 }
 
@@ -51,8 +89,15 @@ export class Board {
     this.knownCells = new Map();
   }
 
+  getKnownCells(): Map<string, Cell> {
+    return this.knownCells;
+  }
+
   private getCanonicalCell(newCell: Cell): Cell {
-    const { i, j } = newCell;
+    let { i, j } = newCell;
+    i = Math.floor(i / 10);
+    j = Math.floor(j / 10);
+    console.log("canonical cell", i, j);
     const key = [i, j].toString();
 
     return this.knownCells.get(key)!;
@@ -63,14 +108,20 @@ export class Board {
     const j = Math.floor(point.lng / this.tileWidth);
 
     const newCell: Cell = { i, j };
+
     // delete bottom two only for commit
     const canonicalCell = this.getCanonicalCell(newCell);
 
     if (canonicalCell) {
       return canonicalCell;
+    } else {
+      const keyI = Math.floor(i / 10);
+      const keyJ = Math.floor(j / 10);
+      this.knownCells.set([keyI, keyJ].toString(), newCell);
+      return newCell;
     }
 
-    return newCell;
+    //return newCell;
   }
 
   getCellBounds(newCell: Cell): leaflet.LatLngBounds {
