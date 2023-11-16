@@ -5,6 +5,7 @@ import luck from "./luck";
 import "./leafletWorkaround";
 import { Cell, Board } from "./board";
 import { GeoCoin, Geocache } from "./board";
+import { Exists } from "./board";
 
 let playerLatLang: leaflet.LatLng = leaflet.latLng({
   lat: 36.9995,
@@ -46,7 +47,7 @@ playerMarker.addTo(map);
 
 //memento pattern
 //let mementos: Map<Cell, string> = new Map<Geocache, string>();
-//let mementos: Map<Cell, string> = new Map<Cell, string>();
+let mementos: Map<string, string> = new Map<string, string>();
 
 // for inventory
 let myInventory: GeoCoin[] = [];
@@ -84,14 +85,22 @@ const inventory: HTMLDivElement =
   document.querySelector<HTMLDivElement>("#inventory")!;
 inventory.innerHTML = "Inventory: ";
 
-function makeGeocacheLocation(i: number, j: number) {
+function makeGeocacheLocation(i: number, j: number, exists: boolean) {
   const newCell: Cell = { i, j };
   const newBounds = board.getCellBounds(newCell);
-  const newGeocache = new Geocache(newCell);
+  const newGeocache: Geocache = new Geocache(newCell);
+
+  if (exists) {
+    const from: string = mementos.get(generateKey(newCell))!;
+    //console.log(from);
+    newGeocache.fromMemento(from);
+    console.log(newGeocache);
+  } else {
+    mementos.set(generateKey(newCell), newGeocache.toMemento());
+  }
 
   const cache: leaflet.Layer = leaflet.rectangle(newBounds);
   cacheLayers.push(cache);
-
   cache.bindPopup(popup(newGeocache, newCell));
   cache.addTo(map);
 }
@@ -107,11 +116,15 @@ function popup(newGeocache: Geocache, newCell: Cell): HTMLElement {
                 <p id="playerLocation">playerLocation</p>`;
   const poke = container.querySelector<HTMLButtonElement>("#poke")!;
   const deposit = container.querySelector<HTMLButtonElement>("#deposit")!;
+  const key = generateKey(newCell);
 
   poke.addEventListener("click", () => {
     if (numOfCoins > 0) {
       myInventory.push(newGeocache.poke()!);
       numOfCoins = newGeocache.getCoinCount();
+      // memento updates
+      mementos.delete(key);
+      mementos.set(key, newGeocache.toMemento());
     }
 
     container.querySelector<HTMLSpanElement>("#value")!.innerHTML =
@@ -125,6 +138,9 @@ function popup(newGeocache: Geocache, newCell: Cell): HTMLElement {
     if (myInventory.length > 0) {
       newGeocache.deposit(myInventory.pop()!);
       numOfCoins = newGeocache.getCoinCount();
+
+      mementos.delete(key);
+      mementos.set(key, newGeocache.toMemento());
     }
 
     container.querySelector<HTMLSpanElement>("#value")!.innerHTML =
@@ -138,6 +154,15 @@ function popup(newGeocache: Geocache, newCell: Cell): HTMLElement {
   )!.innerHTML = `Player Location: ${playerLatLang.toString()}`;
 
   return container;
+}
+
+function generateKey(newCell: Cell): string {
+  let { i, j } = newCell;
+  i = Math.floor(i / 10);
+  j = Math.floor(j / 10);
+
+  const key = [i, j].toString();
+  return key;
 }
 
 // buttons for moving player location
@@ -178,12 +203,15 @@ southButton.addEventListener("click", () => {
 });
 
 function createCache(location: leaflet.LatLng) {
-  const playerCell: Cell = board.getCellForPoint(location);
+  //const playerCell: Cell = board.getCellForPoint(location);
+  const playerCellExists: Exists = board.getCellForPoint(location);
+  const exists: boolean = playerCellExists.exists;
+  const playerCell: Cell = playerCellExists.cell;
 
   for (let i = -NEIGHBORHOOD_SIZE; i < NEIGHBORHOOD_SIZE; i++) {
     for (let j = -NEIGHBORHOOD_SIZE; j < NEIGHBORHOOD_SIZE; j++) {
       if (luck([i, j].toString()) < PIT_SPAWN_PROBABILITY) {
-        makeGeocacheLocation(playerCell.i + i, playerCell.j + j);
+        makeGeocacheLocation(playerCell.i + i, playerCell.j + j, exists);
       }
     }
   }
@@ -226,8 +254,5 @@ function showInventory() {
     inventory.innerHTML += "🦃 " + myInventory[k].serial + "<br/>";
   }
 }
-
-const knCells = board.getKnownCells();
-console.log(knCells);
 
 createCache(playerLatLang);
