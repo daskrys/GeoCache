@@ -11,11 +11,6 @@ export interface GeoCoin {
   serial: string;
 }
 
-export interface Exists {
-  cell: Cell;
-  exists: boolean;
-}
-
 export interface Memento<T> {
   toMemento(): T;
   fromMemento(memento: T): void;
@@ -24,84 +19,74 @@ export interface Memento<T> {
 export class Geocache implements Memento<string> {
   coins: GeoCoin[];
   description: string;
-  numOfCoins: number;
+  mintLocation: Cell;
 
-  constructor(newCell: Cell) {
-    this.numOfCoins = Math.floor(
+  constructor() {
+    this.coins = [];
+    this.description = "";
+    this.mintLocation = { i: 0, j: 0 };
+  }
+
+  getDescription(): string {
+    return this.description;
+  }
+
+  updateDescription() {
+    this.description = `There is a pit here at "${this.mintLocation.i},${this.mintLocation.j}". It has value <span id="value">${this.coins.length}</span>`;
+  }
+
+  mintCoins(newCell: Cell) {
+    this.mintLocation = newCell;
+    const numOfCoins = Math.floor(
       luck([newCell.i, newCell.j, "initialValue"].toString()) * 5
     );
-    this.description = `There is a pit here at "${newCell.i},${newCell.j}". It has value <span id="value">${this.numOfCoins}</span>.`;
-    this.coins = [];
+    this.description = `There is a pit here at "${newCell.i},${newCell.j}". `;
 
-    for (let j = 0; j < this.numOfCoins; j++) {
+    for (let j = 0; j < numOfCoins; j++) {
       const serial: string = "#" + j.toString() + " : " + newCell.i + newCell.j;
       const newCoin: GeoCoin = { mintLocation: newCell, serial: serial };
       this.coins.push(newCoin);
     }
-  }
-  /*
-  toMemento(): string {
-    return JSON.stringify(this);
-  }
 
-  fromMemento(memento: string): void {
-    const { coins, description } = JSON.parse(memento);
-    this.coins = coins;
-    this.description = description;
+    this.updateDescription();
   }
-  */
 
   deposit(newCoin: GeoCoin) {
     this.coins.push(newCoin);
-    this.numOfCoins = this.coins.length;
+
+    this.updateDescription();
   }
 
   poke(): GeoCoin | undefined {
     if (this.coins.length > 0) {
-      this.numOfCoins = this.coins.length;
       return this.coins.pop();
     }
+
+    this.updateDescription();
   }
 
   getCoinCount(): number {
     return this.coins.length;
   }
-  /*
-  toMemento(): string {
-    return this.coins
-      .map((coin) =>
-        [coin.mintLocation.i, coin.mintLocation.j, coin.serial].toString()
-      )
-      .join(";");
-  } */
 
   toMemento(): string {
     return JSON.stringify(this);
   }
 
   fromMemento(memento: string): void {
-    const { coins, description } = JSON.parse(memento);
-    this.coins = coins;
-    this.description = description;
-    this.numOfCoins = this.coins.length;
+    const obj = JSON.parse(memento);
+    this.coins = obj.coins;
+    this.description = obj.description;
+    this.mintLocation = obj.mintLocation;
+    this.updateDescription();
   }
-
-  /*fromMemento(memento: string): void {
-    this.coins = memento.split(";").map((coin) => {
-      const [i, j, serial] = coin.split(",");
-      return {
-        mintLocation: { i: parseInt(i), j: parseInt(j) },
-        serial: serial,
-      };
-    });
-  }*/
 }
 
 export class Board {
   readonly tileWidth: number;
   readonly tileVisibility: number;
 
-  private readonly knownCells: Map<string, Cell>;
+  knownCells: Map<string, Cell[]>;
 
   constructor(newTileWidth: number, newTileVisibility: number) {
     this.tileWidth = newTileWidth;
@@ -109,43 +94,58 @@ export class Board {
     this.knownCells = new Map();
   }
 
-  getKnownCells(): Map<string, Cell> {
-    return this.knownCells;
+  getKnownCells(location: leaflet.LatLng): Cell[] {
+    const key = this.generateKey(this.getCellForPoint(location));
+
+    const cellArr: Cell[] = this.knownCells.get(key)!;
+    return cellArr;
   }
 
-  private getExistingCell(newCell: Cell): Cell {
-    //private getExistingCell(newCell: Cell): Cell {
-    let { i, j } = newCell;
-    i = Math.floor(i / 10);
-    j = Math.floor(j / 10);
+  isKnownCell(location: leaflet.LatLng): boolean {
+    const key = this.generateKey(this.getCellForPoint(location));
+    const cellArr: Cell[] = this.knownCells.get(key)!;
 
+    if (cellArr) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  pushCell(newCell: Cell, location: leaflet.LatLng) {
+    const key = this.generateKey(this.getCellForPoint(location));
+    let cellArr: Cell[] = this.knownCells.get(key)!;
+
+    if (!cellArr) {
+      cellArr = [];
+    }
+
+    cellArr.push(newCell);
+    this.knownCells.set(key, cellArr);
+  }
+
+  generateKey(cell: Cell): string {
+    const i = Math.floor(cell.i / 10);
+    const j = Math.floor(cell.j / 10);
     const key = [i, j].toString();
 
-    return this.knownCells.get(key)!;
+    return key;
   }
 
-  getCellForPoint(point: leaflet.LatLng): Exists {
-    //getCellForPoint(point: leaflet.LatLng): Cell {
+  getCellForPoint(point: leaflet.LatLng) {
     const i = Math.floor(point.lat / this.tileWidth);
     const j = Math.floor(point.lng / this.tileWidth);
 
     const newCell: Cell = { i, j };
 
-    // delete bottom two only for commit
-    const canonicalCell = this.getExistingCell(newCell);
+    const key = this.generateKey(newCell);
+    let cellArr: Cell[] = this.knownCells.get(key)!;
 
-    if (canonicalCell) {
-      const exists: Exists = { cell: canonicalCell, exists: true };
-      return exists;
-    } else {
-      const keyI = Math.floor(i / 10);
-      const keyJ = Math.floor(j / 10);
-      this.knownCells.set([keyI, keyJ].toString(), newCell);
-      const exists: Exists = { cell: newCell, exists: false };
-      return exists;
+    if (!cellArr) {
+      cellArr = [];
     }
 
-    //return newCell;
+    return newCell;
   }
 
   getCellBounds(newCell: Cell): leaflet.LatLngBounds {
@@ -160,13 +160,5 @@ export class Board {
     );
 
     return leaflet.latLngBounds(sw, ne);
-  }
-
-  getCellsNearPoint(point: leaflet.LatLng): Cell[] {
-    const resultCells: Cell[] = [];
-    const originCell = this.getCellForPoint(point).cell; // could go very wrong
-
-    resultCells.push(originCell);
-    return resultCells;
   }
 }
