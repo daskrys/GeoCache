@@ -5,6 +5,10 @@ import luck from "./luck";
 import "./leafletWorkaround";
 import { Cell, Board } from "./board";
 import { GeoCoin, Geocache } from "./board";
+import L from "leaflet";
+
+const API_KEY: string =
+  "pNqux0l8wwTaqsXV8xLJHzHT2p0uqgFjhn06I0XCfCqmzXopyKCi97a4JGRz1MaJ";
 
 let playerLatLang: leaflet.LatLng =
   //parsedPlayerLatLang ??
@@ -51,20 +55,40 @@ const map = leaflet.map(mapContainer, {
   zoomControl: false,
   scrollWheelZoom: false,
 });
-
+/*
 leaflet
   .tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
     attribution:
       '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   })
-  .addTo(map);
+  .addTo(map); */
+
+let Jawg_Dark = L.tileLayer(
+  `https://{s}.tile.jawg.io/jawg-streets/{z}/{x}/{y}{r}.png?access-token=${API_KEY}`,
+  {
+    attribution:
+      '<a href="http://jawg.io" title="Tiles Courtesy of Jawg Maps" target="_blank">&copy; <b>Jawg</b>Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19,
+    subdomains: "abcd",
+    accessToken: API_KEY,
+  }
+);
+
+Jawg_Dark.addTo(map);
 
 const playerMarker: leaflet.Marker<any> = leaflet.marker(playerLatLang);
-if (parsedInventory) {
-  playerMarker.bindTooltip(showInvenTooltip());
-} else {
-  playerMarker.bindTooltip("That's you! </br>" + `${playerLatLang.toString()}`);
+
+updatePlayerMarker();
+
+function updatePlayerMarker() {
+  if (parsedInventory) {
+    playerMarker.bindTooltip(showInvenTooltip());
+  } else {
+    playerMarker.bindTooltip(
+      "That's you! </br>" + `${playerLatLang.toString()}`
+    );
+  }
 }
 
 playerMarker.addTo(map);
@@ -276,6 +300,7 @@ function updatePlayerLocation(newLatLang: leaflet.LatLng) {
     clearPits();
     createCache(playerLatLang);
   }
+  updatePlayerMarker();
   saveGame();
 }
 
