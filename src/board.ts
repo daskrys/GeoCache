@@ -32,7 +32,7 @@ export class Geocache implements Memento<string> {
   }
 
   updateDescription() {
-    this.description = `There is a pit here at "${this.mintLocation.i},${this.mintLocation.j}". It has value <span id="value">${this.coins.length}</span>`;
+    this.description = `There is a cache here at "${this.mintLocation.i},${this.mintLocation.j}". It has value <span id="value">${this.coins.length}</span>`;
   }
 
   mintCoins(newCell: Cell) {
@@ -40,7 +40,7 @@ export class Geocache implements Memento<string> {
     const numOfCoins = Math.floor(
       luck([newCell.i, newCell.j, "initialValue"].toString()) * 5
     );
-    this.description = `There is a pit here at "${newCell.i},${newCell.j}". `;
+    this.description = `There is a cache here at "${newCell.i},${newCell.j}". `;
 
     for (let j = numOfCoins; j > 0; j--) {
       const serial: string = "#" + j.toString() + " : " + newCell.i + newCell.j;
