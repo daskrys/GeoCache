@@ -32,7 +32,7 @@ export class Geocache implements Memento<string> {
   }
 
   updateDescription() {
-    this.description = `There is a cache here at "${this.mintLocation.i},${this.mintLocation.j}". It has value <span id="value">${this.coins.length}</span>`;
+    this.description = `There is a cache here at "${this.mintLocation.i},${this.mintLocation.j}". It has <span id="value"> ${this.coins.length} </span> 🦃`;
   }
 
   mintCoins(newCell: Cell) {
@@ -122,6 +122,7 @@ export class Board {
 
     cellArr.push(newCell);
     this.knownCells.set(key, cellArr);
+    //console.log(this.knownCells);
   }
 
   generateKey(cell: Cell): string {

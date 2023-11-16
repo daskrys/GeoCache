@@ -6,10 +6,12 @@ import "./leafletWorkaround";
 import { Cell, Board } from "./board";
 import { GeoCoin, Geocache } from "./board";
 
-let playerLatLang: leaflet.LatLng = leaflet.latLng({
-  lat: 36.9995,
-  lng: -122.0533,
-});
+let playerLatLang: leaflet.LatLng =
+  //parsedPlayerLatLang ??
+  leaflet.latLng({
+    lat: 36.9995,
+    lng: -122.0533,
+  });
 
 //const NULL_ISLAND: leaflet.LatLng = leaflet.latLng(0, 0);
 const GAMEPLAY_ZOOM_LEVEL: number = 18.5;
@@ -18,7 +20,24 @@ const NEIGHBORHOOD_SIZE: number = 8;
 const PIT_SPAWN_PROBABILITY: number = 0.1;
 const MOVE_DISTANCE: number = 1e-4;
 
+// get from local storage
+const getMementos = localStorage.getItem("mementos");
+const getBoardCells = localStorage.getItem("boardCells");
+const getInventory = localStorage.getItem("inventory");
+const getPolylines = localStorage.getItem("polylines");
+
+const parsedMementos: Map<string, string> = JSON.parse(getMementos!);
+const parsedBoardCells: Map<string, Cell[]> = JSON.parse(getBoardCells!);
+const parsedInventory: GeoCoin[] = JSON.parse(getInventory!);
+const parsedPolylines: leaflet.LatLng[] = JSON.parse(getPolylines!);
+
 const board = new Board(TILE_DEGREES, NEIGHBORHOOD_SIZE);
+board.knownCells = new Map(parsedBoardCells);
+let mementos: Map<string, string> =
+  new Map<string, string>(parsedMementos) ?? new Map<string, string>();
+let myInventory: GeoCoin[] = parsedInventory ?? [];
+const polylines: leaflet.LatLng[] = parsedPolylines ?? [];
+
 const mapContainer: HTMLElement = document.querySelector<HTMLElement>("#map")!;
 let cacheLayers: leaflet.Layer[] = [];
 
@@ -40,11 +59,19 @@ leaflet
       '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   })
   .addTo(map);
-let myInventory: GeoCoin[] = [];
-let mementos: Map<string, string> = new Map<string, string>();
+
 const playerMarker: leaflet.Marker<any> = leaflet.marker(playerLatLang);
-playerMarker.bindTooltip("That's you! ");
+if (parsedInventory) {
+  playerMarker.bindTooltip(showInvenTooltip());
+} else {
+  playerMarker.bindTooltip("That's you! </br>" + `${playerLatLang.toString()}`);
+}
+
 playerMarker.addTo(map);
+
+if (parsedPolylines) {
+  updatePolyline(playerLatLang);
+}
 
 const sensorButton: Element = document.querySelector("#sensor")!;
 const westButton: HTMLButtonElement =
@@ -55,6 +82,9 @@ const northButton: HTMLButtonElement =
   document.querySelector<HTMLButtonElement>("#north")!;
 const southButton: HTMLButtonElement =
   document.querySelector<HTMLButtonElement>("#south")!;
+
+const resetButton: HTMLButtonElement =
+  document.querySelector<HTMLButtonElement>("#reset")!;
 
 sensorButton.addEventListener("click", () => {
   let watchId: number = navigator.geolocation.watchPosition((position) => {
@@ -67,14 +97,17 @@ sensorButton.addEventListener("click", () => {
     navigator.geolocation.clearWatch(watchId);
   });
 });
-
 const statusPanel: HTMLDivElement =
   document.querySelector<HTMLDivElement>("#statusPanel")!;
-statusPanel.innerHTML = "Nothing to see here... yet";
-
 const inventory: HTMLDivElement =
   document.querySelector<HTMLDivElement>("#inventory")!;
-inventory.innerHTML = "Inventory: ";
+
+if (parsedInventory) {
+  showInventory();
+} else {
+  statusPanel.innerHTML = "Nothing to see here... yet";
+  inventory.innerHTML = "Inventory: ";
+}
 
 function makeGeocacheLocation(i: number, j: number, exists: boolean) {
   const newCell: Cell = { i, j };
@@ -89,7 +122,11 @@ function makeGeocacheLocation(i: number, j: number, exists: boolean) {
     mementos.set(key, newGeocache.toMemento());
   }
 
-  const cache: leaflet.Layer = leaflet.rectangle(newBounds);
+  const cache: leaflet.Layer = leaflet.rectangle(newBounds, {
+    color: "#317873",
+    weight: 2.5,
+  });
+
   cacheLayers.push(cache);
   cache.bindPopup(popup(newGeocache, newCell));
   cache.addTo(map);
@@ -100,7 +137,7 @@ function popup(newGeocache: Geocache, newCell: Cell): HTMLElement {
   let numOfCoins = newGeocache.getCoinCount();
 
   container.innerHTML = `
-                <div>${newGeocache.getDescription()}</span>.</div>
+                <div>${newGeocache.getDescription()}</span></div>
                 <button id="poke">poke</button>
                 <button id="deposit">deposit</button>
                 <p id="playerLocation">playerLocation</p>`;
@@ -115,6 +152,7 @@ function popup(newGeocache: Geocache, newCell: Cell): HTMLElement {
       numOfCoins = newGeocache.getCoinCount();
 
       mementos.set(key, newGeocache.toMemento());
+      saveGame();
     }
 
     container.querySelector<HTMLSpanElement>("#value")!.innerHTML =
@@ -122,7 +160,6 @@ function popup(newGeocache: Geocache, newCell: Cell): HTMLElement {
 
     showInventory();
     playerMarker.bindTooltip(showInvenTooltip());
-    statusPanel.innerHTML = `${myInventory.length} coins accumulated`;
   });
 
   deposit.addEventListener("click", () => {
@@ -131,6 +168,7 @@ function popup(newGeocache: Geocache, newCell: Cell): HTMLElement {
       numOfCoins = newGeocache.getCoinCount();
 
       mementos.set(key, newGeocache.toMemento());
+      saveGame();
     }
 
     container.querySelector<HTMLSpanElement>("#value")!.innerHTML =
@@ -183,6 +221,19 @@ southButton.addEventListener("click", () => {
   updatePlayerLocation(newLatLang);
 });
 
+resetButton.addEventListener("click", () => {
+  let prompt: string | null = window.prompt(
+    "Type 'yes' to reset the game\n WARNING: this will delete all your progress\n You also agree to sell your information to the highest bidder."
+  );
+
+  if (prompt === null) {
+    return;
+  } else if (prompt.toLowerCase() == "yes") {
+    clearData();
+    location.reload();
+  }
+});
+
 function createCache(location: leaflet.LatLng) {
   const playerCell = board.getCellForPoint(location);
   const exists: boolean = board.isKnownCell(location);
@@ -216,6 +267,7 @@ function clearPits() {
 }
 
 function updatePlayerLocation(newLatLang: leaflet.LatLng) {
+  updatePolyline(newLatLang);
   playerMarker.setLatLng(newLatLang);
   playerLatLang = playerMarker.getLatLng();
   map.setView(playerMarker.getLatLng());
@@ -224,6 +276,7 @@ function updatePlayerLocation(newLatLang: leaflet.LatLng) {
     clearPits();
     createCache(playerLatLang);
   }
+  saveGame();
 }
 
 function checkCacheLocation(newLatLang: leaflet.LatLng): boolean {
@@ -238,7 +291,17 @@ function checkCacheLocation(newLatLang: leaflet.LatLng): boolean {
   }
 }
 
+function updatePolyline(newLatLang: leaflet.LatLng) {
+  polylines.push(playerMarker.getLatLng());
+  polylines.push(newLatLang);
+
+  const polyline = leaflet.polyline(polylines, { color: "#0f1c21" });
+
+  polyline.addTo(map);
+}
+
 function showInventory() {
+  statusPanel.innerHTML = `${myInventory.length} coins accumulated`;
   inventory.innerHTML = "Inventory: " + "<br/>";
   const inventoryLen = myInventory.length;
 
@@ -255,7 +318,27 @@ function showInvenTooltip(): string {
     str += "🦃 " + myInventory[k].serial + "<br/>";
   }
 
+  str += playerLatLang.toString();
+
   return str;
+}
+
+function saveGame() {
+  const stringifyMementos = JSON.stringify(Array.from(mementos.entries()));
+  const stringifyBoardCells = JSON.stringify(
+    Array.from(board.knownCells.entries())
+  );
+  const stringifyInventory = JSON.stringify(myInventory);
+  const stringifyPolylines = JSON.stringify(polylines);
+
+  localStorage.setItem("mementos", stringifyMementos);
+  localStorage.setItem("boardCells", stringifyBoardCells);
+  localStorage.setItem("inventory", stringifyInventory);
+  localStorage.setItem("polylines", stringifyPolylines);
+}
+
+function clearData() {
+  localStorage.clear();
 }
 
 createCache(playerLatLang);
