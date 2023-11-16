@@ -42,7 +42,7 @@ export class Geocache implements Memento<string> {
     );
     this.description = `There is a pit here at "${newCell.i},${newCell.j}". `;
 
-    for (let j = 0; j < numOfCoins; j++) {
+    for (let j = numOfCoins; j > 0; j--) {
       const serial: string = "#" + j.toString() + " : " + newCell.i + newCell.j;
       const newCoin: GeoCoin = { mintLocation: newCell, serial: serial };
       this.coins.push(newCoin);
