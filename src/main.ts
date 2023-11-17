@@ -64,7 +64,7 @@ leaflet
   })
   .addTo(map); */
 
-let Jawg_Dark = L.tileLayer(
+let Jawd_Street = L.tileLayer(
   `https://{s}.tile.jawg.io/jawg-streets/{z}/{x}/{y}{r}.png?access-token=${API_KEY}`,
   {
     attribution:
@@ -75,7 +75,7 @@ let Jawg_Dark = L.tileLayer(
   }
 );
 
-Jawg_Dark.addTo(map);
+Jawd_Street.addTo(map);
 
 const playerMarker: leaflet.Marker<any> = leaflet.marker(playerLatLang);
 
@@ -247,7 +247,7 @@ southButton.addEventListener("click", () => {
 
 resetButton.addEventListener("click", () => {
   let prompt: string | null = window.prompt(
-    "Type 'yes' to reset the game\n WARNING: this will delete all your progress\n You also agree to sell your information to the highest bidder."
+    "Type 'yes' to reset the game\nWARNING: this will delete and reset your progress\nand your data will be sold to the highest bidder\nhaha just kidding.. 🤨"
   );
 
   if (prompt === null) {
@@ -326,7 +326,7 @@ function updatePolyline(newLatLang: leaflet.LatLng) {
 }
 
 function showInventory() {
-  statusPanel.innerHTML = `${myInventory.length} coins accumulated`;
+  statusPanel.innerHTML = `${myInventory.length} GeoTurkeys accumulated`;
   inventory.innerHTML = "Inventory: " + "<br/>";
   const inventoryLen = myInventory.length;
 
