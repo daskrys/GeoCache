@@ -94,7 +94,7 @@ function updatePlayerMarker() {
 playerMarker.addTo(map);
 
 if (parsedPolylines) {
-  updatePolyline(playerLatLang);
+  // updatePolyline(playerLatLang);
 }
 
 const sensorButton: Element = document.querySelector("#sensor")!;
@@ -291,7 +291,7 @@ function clearPits() {
 }
 
 function updatePlayerLocation(newLatLang: leaflet.LatLng) {
-  updatePolyline(newLatLang);
+  //updatePolyline(newLatLang);
   playerMarker.setLatLng(newLatLang);
   playerLatLang = playerMarker.getLatLng();
   map.setView(playerMarker.getLatLng());
@@ -315,7 +315,7 @@ function checkCacheLocation(newLatLang: leaflet.LatLng): boolean {
     return false;
   }
 }
-
+/*
 function updatePolyline(newLatLang: leaflet.LatLng) {
   polylines.push(playerMarker.getLatLng());
   polylines.push(newLatLang);
@@ -324,6 +324,7 @@ function updatePolyline(newLatLang: leaflet.LatLng) {
 
   polyline.addTo(map);
 }
+*/
 
 function showInventory() {
   statusPanel.innerHTML = `${myInventory.length} GeoTurkeys accumulated`;
